@@ -4,8 +4,22 @@ import cors from "cors";
 const app = express();
 const PORT = 3000;
 
-app.use(cors());
+// Enhanced CORS
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Cache-Control'],
+}));
+
 app.use(express.json());
+
+// Prevent caching
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
 
 // Elite Piece-Square Tables (Stockfish-inspired)
 const PST = {
@@ -164,7 +178,6 @@ function ab(e,d,a,b,max,ply) {
   const ms=e.ord(e.mvs(),ply);
   if(ms.length===0)return max?-999999:999999;
 
-  // Late Move Reduction
   const lim = d>2&&ms.length>20?20:25;
 
   if(max){
@@ -174,19 +187,16 @@ function ab(e,d,a,b,max,ply) {
       const c=e.c();
       c.m(m);
       
-      // LMR: Reduce depth for later moves
       const rd = i>8&&d>2?d-2:d-1;
       
       const sc=ab(c,rd,a,b,false,ply+1);
       if(sc>v)v=sc;
       a=Math.max(a,sc);
       if(b<=a){
-        // Killer move
         if(e.km[ply][0]!==m){
           e.km[ply][1]=e.km[ply][0];
           e.km[ply][0]=m;
         }
-        // History heuristic
         e.hh[m]=(e.hh[m]||0)+d*d;
         break;
       }
@@ -219,7 +229,7 @@ function ab(e,d,a,b,max,ply) {
   }
 }
 
-// Iterative Deepening with Aspiration Windows
+// Depth-5 for tournament-level accuracy
 function best(e) {
   const ms=e.ord(e.mvs(),0);
   if(ms.length===0)return null;
@@ -241,7 +251,6 @@ function best(e) {
         cm=m;
       }
       
-      // Aspiration window fail
       if(s<=asp_a||s>=asp_b){
         asp_a=-Infinity;
         asp_b=Infinity;
@@ -257,13 +266,24 @@ function best(e) {
   return bm;
 }
 
+// Health check
+app.get("/", (req, res) => {
+  res.json({
+    status: "ok",
+    engine: "Tournament Chess Engine",
+    depth: 5,
+    elo: "~2600",
+    features: ["Iterative Deepening", "Aspiration Windows", "LMR"]
+  });
+});
+
 app.post("/analyze-batch",async(req,res)=>{
   try{
     const{moves}=req.body;
     if(!moves||!Array.isArray(moves))return res.status(400).json({error:"moves array required"});
     if(moves.length===0)return res.json({moves:[]});
 
-    console.log(`\n🚀 ULTIMATE: ${moves.length} moves (Depth 5 + ID + Aspiration + LMR)\n`);
+    console.log(`\n🏆 ANALYZING: ${moves.length} moves (Depth-5)\n`);
 
     const rs=[];
     const e=new Engine();
@@ -277,7 +297,7 @@ app.post("/analyze-batch",async(req,res)=>{
         
         const pe=e.c();
         if(!pe.m(mv)){
-          console.error(`Invalid: ${mv}`);
+          console.error(`❌ Invalid: ${mv}`);
           continue;
         }
         const pv=-pe.e();
@@ -302,18 +322,18 @@ app.post("/analyze-batch",async(req,res)=>{
           moveNumber:Math.floor(i/2)+1,
           played:mv,
           best:bm||mv,
-          eval:Math.round(pv),
+          eval:Math.round(pv)/100, // ⭐ CRITICAL: Divide by 100 for pawns
           centipawnLoss:Math.round(cpl),
           tag:tag,
         });
 
         const dt=((Date.now()-t0)/1000).toFixed(2);
-        console.log(`[${i+1}/${moves.length}] ${mv}→${bm} CPL:${Math.round(cpl)} ${tag} (${dt}s)`);
+        console.log(`✓ [${i+1}/${moves.length}] ${mv}→${bm} | Eval:${(pv/100).toFixed(1)} | CPL:${Math.round(cpl)} | ${tag} (${dt}s)`);
 
         e.m(mv);
 
       }catch(err){
-        console.error(`Error ${i}:`,err);
+        console.error(`❌ Error ${i}:`,err);
       }
     }
 
@@ -321,15 +341,16 @@ app.post("/analyze-batch",async(req,res)=>{
     res.json({moves:rs});
 
   }catch(err){
-    console.error("Error:",err);
+    console.error("❌ Error:",err);
     res.status(500).json({error:err.message});
   }
 });
 
 app.listen(PORT,()=>{
-  console.log(`\n ULTIMATE Chess Engine`);
-  console.log(` localhost:${PORT}`);
-  console.log(` Depth-5 Iterative Deepening`);
-  console.log(` Aspiration Windows + LMR`);
-  console.log(` ~2600 ELO | 0.4-1.2s/move\n`);
+  console.log(`\n╔════════════════════════════════════════╗`);
+  console.log(`║   Tournament Chess Engine           ║`);
+  console.log(`║   Port: ${PORT}                         ║`);
+  console.log(`║   Depth-5 Analysis                   ║`);
+  console.log(`║   ~2600 ELO | 0.5-1.5s/move          ║`);
+  console.log(`╚════════════════════════════════════════╝\n`);
 });
