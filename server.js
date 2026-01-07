@@ -3,21 +3,28 @@ import cors from "cors";
 import { Worker } from "worker_threads";
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT; // 🚨 REQUIRED for Railway
 
 app.use(cors());
 app.use(express.json());
 
-app.get("/health", (_, res) => {
+// ✅ Health check (Railway uses this)
+app.get("/health", (req, res) => {
   res.json({ status: "ok", engine: "online" });
 });
 
-app.post("/analyze-batch", async (req, res) => {
+// ✅ Analysis endpoint
+app.post("/analyze-batch", (req, res) => {
   const { moves } = req.body;
-  if (!Array.isArray(moves))
-    return res.status(400).json({ error: "moves array required" });
 
-  const worker = new Worker("./engine.worker.js");
+  if (!Array.isArray(moves)) {
+    return res.status(400).json({ error: "moves array required" });
+  }
+
+  // ✅ CORRECT worker creation (THIS is where new URL goes)
+  const worker = new Worker(
+    new URL("./engine.worker.js", import.meta.url)
+  );
 
   worker.postMessage({ moves });
 
@@ -27,10 +34,12 @@ app.post("/analyze-batch", async (req, res) => {
   });
 
   worker.on("error", (err) => {
+    console.error("Worker error:", err);
     res.status(500).json({ error: err.message });
   });
 });
 
+// ✅ MUST listen on process.env.PORT
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Chess Engine running on ${PORT}`);
+  console.log(`🚀 Chess Engine listening on ${PORT}`);
 });
