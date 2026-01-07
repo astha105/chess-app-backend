@@ -318,17 +318,37 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, "0.0.0.0", () => {
+const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Chess Analysis API running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Timestamp: ${new Date().toISOString()}`);
 });
 
-// Handle process errors
+// Keep the process alive
+server.keepAliveTimeout = 65000;
+server.headersTimeout = 66000;
+
+// Prevent crashes
 process.on('uncaughtException', (err) => {
   console.error('❌ Uncaught Exception:', err);
+  // Don't exit, just log
 });
 
 process.on('unhandledRejection', (err) => {
   console.error('❌ Unhandled Rejection:', err);
+  // Don't exit, just log
+});
+
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  server.close(() => {
+    console.log('Server closed');
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully...');
+  server.close(() => {
+    console.log('Server closed');
+  });
 });
