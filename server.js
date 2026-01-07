@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;  // ⭐ FIXED: Use Railway's PORT
 
 // Enhanced CORS
 app.use(cors({
@@ -266,14 +266,28 @@ function best(e) {
   return bm;
 }
 
-// Health check
+// ⭐ Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    depth: 5,
+    elo: "~2600",
+    timestamp: new Date().toISOString()
+  });
+});
+
+// ⭐ Root endpoint
 app.get("/", (req, res) => {
   res.json({
     status: "ok",
     engine: "Tournament Chess Engine",
     depth: 5,
     elo: "~2600",
-    features: ["Iterative Deepening", "Aspiration Windows", "LMR"]
+    features: ["Iterative Deepening", "Aspiration Windows", "LMR"],
+    endpoints: {
+      health: "/health",
+      analyze: "/analyze-batch"
+    }
   });
 });
 
@@ -348,9 +362,9 @@ app.post("/analyze-batch",async(req,res)=>{
 
 app.listen(PORT,()=>{
   console.log(`\n╔════════════════════════════════════════╗`);
-  console.log(`║   Tournament Chess Engine           ║`);
-  console.log(`║   Port: ${PORT}                         ║`);
-  console.log(`║   Depth-5 Analysis                   ║`);
-  console.log(`║   ~2600 ELO | 0.5-1.5s/move          ║`);
+  console.log(`║   Tournament Chess Engine             ║`);
+  console.log(`║   Port: ${PORT}                            ║`);
+  console.log(`║   Depth-5 Analysis                     ║`);
+  console.log(`║   ~2600 ELO | 0.5-1.5s/move            ║`);
   console.log(`╚════════════════════════════════════════╝\n`);
 });
