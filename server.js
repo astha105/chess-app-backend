@@ -360,7 +360,7 @@ app.post("/analyze-batch",async(req,res)=>{
   }
 });
 
-app.listen(PORT,()=>{
+app.listen(PORT, '0.0.0.0', ()=>{
   console.log(`\n╔════════════════════════════════════════╗`);
   console.log(`║   Tournament Chess Engine             ║`);
   console.log(`║   Port: ${PORT}                            ║`);
