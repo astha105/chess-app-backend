@@ -1,17 +1,18 @@
 {
-  "name": "chess-app-backend",
+  "name": "chess-api",
   "version": "1.0.0",
-  "description": "Chess analysis API",
-  "type": "module",
+  "description": "Chess Analysis API",
   "main": "server.js",
+  "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
+  "keywords": ["chess", "api"],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }
