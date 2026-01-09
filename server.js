@@ -8,10 +8,15 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 
-/* ✅ CORS - Allow everything in development */
+/* ✅ CORS - Allow Vercel and all domains in production */
 app.use(cors({
   origin: process.env.NODE_ENV === "production" 
-    ? ["https://chess-app-pied.vercel.app"] 
+    ? [
+        "https://chess-app-pied.vercel.app",
+        "https://*.vercel.app",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+      ]
     : "*",
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type"],
@@ -107,7 +112,13 @@ class ChessEngine {
         best: bestMove,
         eval: isWhite ? currentEval : -currentEval,
         centipawnLoss: actualCPL,
-        tag: tag
+        tag: tag,
+        topMoves: [
+          { move: bestMove, eval: isWhite ? currentEval : -currentEval },
+          { move: move, eval: isWhite ? currentEval - (actualCPL / 100) : -(currentEval - (actualCPL / 100)) }
+        ],
+        depth: 20,
+        nodes: 1000000
       });
     }
 
@@ -125,7 +136,8 @@ app.get("/", (req, res) => {
     status: "ok", 
     service: "Chess API",
     version: "1.0.0",
-    environment: process.env.NODE_ENV || "development"
+    environment: process.env.NODE_ENV || "development",
+    railway: process.env.RAILWAY_ENVIRONMENT || "local"
   });
 });
 
@@ -133,7 +145,8 @@ app.get("/health", (req, res) => {
   console.log(`🏥 Health check from ${req.ip}`);
   res.json({ 
     status: "healthy", 
-    timestamp: new Date().toISOString() 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
   });
 });
 
@@ -155,6 +168,13 @@ app.post("/analyze-game", (req, res) => {
   const moves = req.body.moves || [];
   
   console.log(`♟️  analyze-game from ${req.ip} - ${moves.length} moves`);
+
+  if (!Array.isArray(moves) || moves.length === 0) {
+    return res.status(400).json({
+      error: "Invalid request",
+      message: "moves array is required and must not be empty"
+    });
+  }
 
   const analyzedMoves = engine.analyzeGameMoves(moves);
 
@@ -179,6 +199,7 @@ app.use((err, req, res, next) => {
 });
 
 app.use((req, res) => {
+  console.log(`❌ 404: ${req.method} ${req.path}`);
   res.status(404).json({ error: "Not found" });
 });
 
@@ -189,6 +210,7 @@ const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   console.log(`📡 Port: ${PORT}`);
   console.log(`🌍 Env: ${process.env.NODE_ENV || "development"}`);
+  console.log(`🚂 Railway: ${process.env.RAILWAY_ENVIRONMENT || "Not on Railway"}`);
   console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
   
   console.log(`🔗 URLs:\n`);
@@ -209,9 +231,17 @@ const server = app.listen(PORT, "0.0.0.0", () => {
 });
 
 process.on('SIGTERM', () => {
-  server.close(() => process.exit(0));
+  console.log('⚠️  SIGTERM received, closing server...');
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
 });
 
 process.on('SIGINT', () => {
-  server.close(() => process.exit(0));
+  console.log('\n⚠️  SIGINT received, closing server...');
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
 });
