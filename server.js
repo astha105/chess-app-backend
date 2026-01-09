@@ -10,18 +10,22 @@ const PORT = process.env.PORT || 3000;
 
 /* ✅ CORS - Allow Vercel and all domains in production */
 app.use(cors({
-  origin: process.env.NODE_ENV === "production" 
-    ? [
-        "https://chess-app-pied.vercel.app",
-        "https://*.vercel.app",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000"
-      ]
-    : "*",
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+
+    if (
+      origin.includes("vercel.app") ||
+      origin.includes("localhost")
+    ) {
+      return callback(null, true);
+    }
+
+    callback(new Error("CORS blocked"));
+  },
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type"],
-  credentials: false,
 }));
+
 
 app.use(express.json({ limit: "10mb" }));
 
